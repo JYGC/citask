@@ -1,0 +1,72 @@
+#!/bin/sh
+#
+# `gitleaks git` reads only the lines added to files, yet a push also publishes commit messages, file
+# names and commit addresses, so this hook checks those as well.
+
+set -eu
+
+private_values_list="${XDG_CONFIG_HOME:-$HOME/.config}/citask/gitleaks-private-values.toml"
+github_noreply_address_pattern='^([0-9]+\+[^@]+@users\.noreply\.github\.com|noreply@github\.com)$'
+
+refuse_push() {
+	echo "pre-push: push refused: $1" >&2
+	exit 1
+}
+
+refuse_push_unless_scan_can_run_in_full() {
+	command -v gitleaks >/dev/null || refuse_push "gitleaks is not installed"
+	[ -f "$private_values_list" ] || refuse_push "private values list is missing: $private_values_list"
+}
+
+is_zero_object_name() {
+	case "$1" in
+	*[!0]*) return 1 ;;
+	*) return 0 ;;
+	esac
+}
+
+print_outgoing_commit_range() {
+	local_object_name=$1
+	remote_object_name=$2
+	if is_zero_object_name "$remote_object_name" ||
+		! git cat-file -e "$remote_object_name^{commit}" 2>/dev/null; then
+		echo "$local_object_name"
+	else
+		echo "$remote_object_name..$local_object_name"
+	fi
+}
+
+refuse_private_values_in_file_changes() {
+	gitleaks git --no-banner --redact --ignore-gitleaks-allow \
+		--config "$private_values_list" --log-opts="$1" . ||
+		refuse_push "gitleaks found a private value in the file changes of $1"
+}
+
+refuse_private_values_in_commit_messages_and_file_names() {
+	git log --format='%B' --name-only "$1" >"$commit_text_file"
+	gitleaks stdin --no-banner --redact --ignore-gitleaks-allow \
+		--config "$private_values_list" <"$commit_text_file" ||
+		refuse_push "gitleaks found a private value in the commit messages or file names of $1"
+}
+
+refuse_commit_addresses_that_are_not_noreply() {
+	git log --format='%ae%n%ce' "$1" >"$commit_text_file"
+	if grep -Ev "$github_noreply_address_pattern" "$commit_text_file" >/dev/null; then
+		refuse_push "a commit in $1 has an author or committer address that is not a GitHub noreply address"
+	fi
+}
+
+refuse_push_unless_scan_can_run_in_full
+
+commit_text_file=$(mktemp)
+trap 'rm -f "$commit_text_file"' EXIT
+
+while read -r local_ref local_object_name remote_ref remote_object_name; do
+	if is_zero_object_name "$local_object_name"; then
+		continue
+	fi
+	outgoing_commit_range=$(print_outgoing_commit_range "$local_object_name" "$remote_object_name")
+	refuse_private_values_in_file_changes "$outgoing_commit_range"
+	refuse_private_values_in_commit_messages_and_file_names "$outgoing_commit_range"
+	refuse_commit_addresses_that_are_not_noreply "$outgoing_commit_range"
+done
