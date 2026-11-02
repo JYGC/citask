@@ -74,6 +74,8 @@ type pollHarness struct {
 	markerDirectory                 string
 	gitHubTokenFile                 string
 	gitHubRequestTimeLimit          time.Duration
+	heartbeatUrl                    string
+	heartbeatRequestTimeLimit       time.Duration
 	github                          *gitHubStub
 	leftoverProcessStopper          *recordingLeftoverProcessStopper
 	projects                        []*enrolledProject
@@ -93,6 +95,7 @@ func newPollHarness(t *testing.T) *pollHarness {
 		markerDirectory:                 t.TempDir(),
 		gitHubTokenFile:                 gitHubTokenFile,
 		gitHubRequestTimeLimit:          30 * time.Second,
+		heartbeatRequestTimeLimit:       10 * time.Second,
 		github:                          newGitHubStub(t),
 		leftoverProcessStopper: &recordingLeftoverProcessStopper{
 			temporaryFoldersParentDirectory: temporaryFoldersParentDirectory,
@@ -114,6 +117,8 @@ func (harness *pollHarness) settings() wiring.PollSettings {
 		RunLogRetention:                 30 * 24 * time.Hour,
 		GitNetworkTimeLimit:             30 * time.Second,
 		GitHubRequestTimeLimit:          harness.gitHubRequestTimeLimit,
+		HeartbeatUrl:                    harness.heartbeatUrl,
+		HeartbeatRequestTimeLimit:       harness.heartbeatRequestTimeLimit,
 		ProcessStopGracePeriod:          shortProcessStopGrace,
 		Projects:                        projects,
 	}

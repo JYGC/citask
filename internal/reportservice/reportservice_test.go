@@ -148,6 +148,22 @@ func newReportTestFixture(results ...domain.RunResult) *reportTestFixture {
 	return fixture
 }
 
+type countingHeartbeatSender struct {
+	calls int
+	err   error
+}
+
+func (sender *countingHeartbeatSender) SendHeartbeat(ctx context.Context) error {
+	sender.calls++
+	return sender.err
+}
+
+func (fixture *reportTestFixture) withHeartbeatSender(sender *countingHeartbeatSender) *ReportService {
+	dependencies := fixture.service.Dependencies
+	dependencies.HeartbeatSender = sender
+	return New(dependencies)
+}
+
 func (fixture *reportTestFixture) reportEverything(t *testing.T) {
 	t.Helper()
 	if err := fixture.service.ReportUnreportedResults(context.Background(), exampleProject); err != nil {
@@ -408,5 +424,53 @@ func TestPendingStatusThatCannotBePostedIsLoggedAndTheRunContinues(t *testing.T)
 	}
 	if !strings.Contains(fixture.runLog.textByRunIdentifier[exampleRunIdentifier], "GitHub answered 502") {
 		t.Errorf("the failure should be in the run log: %v", fixture.runLog.textByRunIdentifier)
+	}
+}
+
+func TestHeartbeatIsSentWhenNoResultIsWaiting(t *testing.T) {
+	fixture := newReportTestFixture()
+	sender := &countingHeartbeatSender{}
+
+	if err := fixture.withHeartbeatSender(sender).SendHeartbeatUnlessResultsAreWaiting(context.Background(), []domain.Project{exampleProject}); err != nil {
+		t.Fatal(err)
+	}
+
+	if sender.calls != 1 {
+		t.Errorf("heartbeats: %d", sender.calls)
+	}
+}
+
+func TestHeartbeatIsWithheldWhileAResultIsWaiting(t *testing.T) {
+	fixture := newReportTestFixture(passingResult(exampleCommitSha, exampleRunIdentifier))
+	sender := &countingHeartbeatSender{}
+
+	if err := fixture.withHeartbeatSender(sender).SendHeartbeatUnlessResultsAreWaiting(context.Background(), []domain.Project{exampleProject}); err != nil {
+		t.Fatal(err)
+	}
+
+	if sender.calls != 0 {
+		t.Errorf("heartbeats: %d", sender.calls)
+	}
+}
+
+func TestHeartbeatThatCannotBeSentIsNotAnError(t *testing.T) {
+	fixture := newReportTestFixture()
+	sender := &countingHeartbeatSender{err: errors.New("service unreachable")}
+
+	if err := fixture.withHeartbeatSender(sender).SendHeartbeatUnlessResultsAreWaiting(context.Background(), []domain.Project{exampleProject}); err != nil {
+		t.Fatalf("a heartbeat problem must not reach cron: %v", err)
+	}
+}
+
+func TestResultsThatCannotBeCheckedForAHeartbeatAreAnError(t *testing.T) {
+	fixture := newReportTestFixture()
+	fixture.unreported.listError = errors.New("disk failure")
+	sender := &countingHeartbeatSender{}
+
+	if err := fixture.withHeartbeatSender(sender).SendHeartbeatUnlessResultsAreWaiting(context.Background(), []domain.Project{exampleProject}); err == nil {
+		t.Fatal("a state failure must reach cron")
+	}
+	if sender.calls != 0 {
+		t.Errorf("heartbeats: %d", sender.calls)
 	}
 }

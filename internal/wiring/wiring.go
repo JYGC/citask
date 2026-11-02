@@ -14,9 +14,10 @@ import (
 )
 
 const (
-	gitNetworkTimeLimit    = 60 * time.Second
-	gitHubRequestTimeLimit = 30 * time.Second
-	ProcessStopGracePeriod = 10 * time.Second
+	gitNetworkTimeLimit       = 60 * time.Second
+	gitHubRequestTimeLimit    = 30 * time.Second
+	heartbeatRequestTimeLimit = 10 * time.Second
+	ProcessStopGracePeriod    = 10 * time.Second
 
 	// Chromium's unveil policy allows only /tmp, so a private folder must be inside it. A TMPDIR elsewhere
 	// fails with "Failed to create a ProcessSingleton".
@@ -32,6 +33,8 @@ type PollSettings struct {
 	RunLogRetention                 time.Duration
 	GitNetworkTimeLimit             time.Duration
 	GitHubRequestTimeLimit          time.Duration
+	HeartbeatUrl                    string
+	HeartbeatRequestTimeLimit       time.Duration
 	ProcessStopGracePeriod          time.Duration
 	Projects                        []domain.Project
 }
@@ -50,6 +53,8 @@ func PollSettingsFromConfiguration(configuration config.Configuration) PollSetti
 		RunLogRetention:                 configuration.RunLogRetention(),
 		GitNetworkTimeLimit:             gitNetworkTimeLimit,
 		GitHubRequestTimeLimit:          gitHubRequestTimeLimit,
+		HeartbeatUrl:                    configuration.HeartbeatUrl,
+		HeartbeatRequestTimeLimit:       heartbeatRequestTimeLimit,
 		ProcessStopGracePeriod:          ProcessStopGracePeriod,
 		Projects:                        projects,
 	}
@@ -90,6 +95,7 @@ func BuildPollAllProjects(settings PollSettings, leftoverProcessStopper reposito
 		FailureIssueTracker:        gitHub,
 		UnreportedResultRepository: projectState,
 		RunLogRepository:           runLogs,
+		HeartbeatSender:            store.HeartbeatStore{Url: settings.HeartbeatUrl, RequestTimeLimit: settings.HeartbeatRequestTimeLimit},
 	})
 	return application.NewPollAllProjects(settings.Projects, runService, reportService)
 }

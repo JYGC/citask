@@ -16,6 +16,7 @@ type Dependencies struct {
 	FailureIssueTracker        repository.FailureIssueTracker
 	UnreportedResultRepository repository.UnreportedResultRepository
 	RunLogRepository           repository.RunLogRepository
+	HeartbeatSender            repository.HeartbeatSender
 }
 
 type ReportService struct {
@@ -50,6 +51,23 @@ func (service *ReportService) ReportUnreportedResults(ctx context.Context, proje
 			return err
 		}
 	}
+	return nil
+}
+
+// SendHeartbeatUnlessResultsAreWaiting treats a result still waiting as unhealthy, because that is what an
+// expired token looks like. A heartbeat that cannot be sent is ignored: it must not affect a run or a
+// report, and if the problem lasts, the missing heartbeats raise the alert anyway.
+func (service *ReportService) SendHeartbeatUnlessResultsAreWaiting(ctx context.Context, projects []domain.Project) error {
+	for _, project := range projects {
+		results, err := service.UnreportedResultRepository.ListUnreportedResultsOldestFirst(project)
+		if err != nil {
+			return err
+		}
+		if len(results) > 0 {
+			return nil
+		}
+	}
+	_ = service.HeartbeatSender.SendHeartbeat(ctx)
 	return nil
 }
 

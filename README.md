@@ -97,6 +97,25 @@ poll, oldest first.
 `citask poll` exits non-zero only when a person is needed, such as for an invalid config or state that
 cannot be written. Failing tests are not such a case: they are reported on GitHub and the poll exits 0.
 
+## Heartbeat
+
+Failing builds are reported on GitHub, but nothing there says `citask` itself has gone quiet. If the machine is off, cron has
+stopped or the GitHub token has expired, a trunk with no status looks the same as a trunk with nothing to test.
+
+To close that gap, set `HeartbeatUrl` in `citask.json`. After each healthy poll, `citask` makes one `GET` to that URL, with
+no body. Point it at a service that alerts you when requests stop arriving, such as [Healthchecks.io](https://healthchecks.io).
+The URL usually holds a private ID, so keep it out of this repo.
+
+A poll is healthy if every project was checked, nothing failed to write, and no result is waiting to be posted. A failing
+build is healthy, because `citask` did its job, and so is a poll that finds nothing new. A heartbeat that cannot be sent is
+ignored, so it never affects a run or a report.
+
+Allow for your longest run when you choose how long the service waits. A poll sends its heartbeat when it finishes, so the
+gap can reach the sum of your projects' `RunTimeLimitMinutes` plus the time between polls.
+
+An expired token only shows once there is a result to post, so the alert comes after the next change is tested. Some
+services answer success for an unknown ID, so check that your first requests appear on the service's side.
+
 ## Installing
 
 `citask` must run as a dedicated user named exactly `_ci`, which runs nothing else. After every run it
@@ -148,6 +167,9 @@ them, and running it again must not undo that. `--config` only applies when no `
 To change the config, edit the installed file, then check it with `citask check-config <file>`, which
 names every failing field. Unknown fields are rejected. If `_ci` already exists with a different login
 class, home or shell, or is in `wheel`, the script stops rather than change the account.
+
+A new setting needs a program that knows it, because unknown fields are rejected. Install the program first, then edit
+`citask.json`.
 
 `citask` reads `citask.json` from the folder holding the program. To test a commit again, delete
 `state/<Name>/last-tested-commit` in the CI home as `_ci`.

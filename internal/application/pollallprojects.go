@@ -21,6 +21,8 @@ func NewPollAllProjects(projects []domain.Project, runService *runservice.RunSer
 
 // Execute returns an error only for problems that need a person, such as state that cannot be written.
 // Cron mails those. A failing project is not one: it is reported on GitHub and the poll exits zero.
+// The heartbeat is sent last, and only when nothing went wrong, so its absence covers every failure that
+// would otherwise only reach a mailbox on the box. A failing build still counts as healthy.
 func (poll *PollAllProjects) Execute(ctx context.Context) error {
 	releaseLock, acquired, err := poll.runService.TryAcquireExclusivePoll()
 	if err != nil {
@@ -40,8 +42,16 @@ func (poll *PollAllProjects) Execute(ctx context.Context) error {
 		}
 		projectsWithUsableState = append(projectsWithUsableState, project)
 	}
+	everyProjectWasChecked := true
 	for _, project := range projectsWithUsableState {
-		if err := poll.testTrunkCommitIfUntested(ctx, project); err != nil {
+		projectWasChecked, err := poll.testTrunkCommitIfUntested(ctx, project)
+		if err != nil {
+			problemsForAPerson = append(problemsForAPerson, err)
+		}
+		everyProjectWasChecked = everyProjectWasChecked && projectWasChecked
+	}
+	if everyProjectWasChecked && len(problemsForAPerson) == 0 {
+		if err := poll.reportService.SendHeartbeatUnlessResultsAreWaiting(ctx, poll.projects); err != nil {
 			problemsForAPerson = append(problemsForAPerson, err)
 		}
 	}
@@ -55,32 +65,35 @@ func (poll *PollAllProjects) bringRunRecordsUpToDate(ctx context.Context, projec
 	return poll.reportService.ReportUnreportedResults(ctx, project)
 }
 
-func (poll *PollAllProjects) testTrunkCommitIfUntested(ctx context.Context, project domain.Project) error {
+func (poll *PollAllProjects) testTrunkCommitIfUntested(ctx context.Context, project domain.Project) (projectWasChecked bool, err error) {
 	commitSha, found, err := poll.runService.FindUntestedTrunkCommit(ctx, project)
 	if errors.Is(err, runservice.ErrProjectUnavailable) {
-		return poll.runService.RecordPollProblem(project, err)
+		return false, poll.runService.RecordPollProblem(project, err)
 	}
-	if err != nil || !found {
-		return err
+	if err != nil {
+		return false, err
+	}
+	if !found {
+		return true, nil
 	}
 
 	run, err := poll.runService.PrepareRun(ctx, project, commitSha)
 	if errors.Is(err, runservice.ErrProjectUnavailable) {
-		return poll.runService.RecordPollProblem(project, err)
+		return false, poll.runService.RecordPollProblem(project, err)
 	}
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	if err := poll.reportService.ReportRunStarted(ctx, project, run); err != nil {
-		return err
+		return false, err
 	}
 	result, err := poll.runService.ExecutePreparedRun(ctx, project, run)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if err := poll.runService.RecordFinishedRun(project, result); err != nil {
-		return err
+		return false, err
 	}
-	return poll.reportService.ReportUnreportedResults(ctx, project)
+	return true, poll.reportService.ReportUnreportedResults(ctx, project)
 }

@@ -118,6 +118,38 @@ func TestValidationQuotesAProjectNameContainingAPercentSign(t *testing.T) {
 	}
 }
 
+func TestValidationAcceptsAConfigurationWithNoHeartbeatUrl(t *testing.T) {
+	configuration := validConfiguration()
+	configuration.HeartbeatUrl = ""
+	if err := configuration.validate(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLoadFromFileReadsTheHeartbeatUrl(t *testing.T) {
+	withHeartbeat := strings.Replace(validConfigurationJson, `"RunLogRetentionDays": 30,`,
+		`"RunLogRetentionDays": 30, "HeartbeatUrl": "https://heartbeat.example/check-id",`, 1)
+
+	configuration, err := LoadFromFile(writeConfigurationFile(t, withHeartbeat))
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	if configuration.HeartbeatUrl != "https://heartbeat.example/check-id" {
+		t.Errorf("heartbeat url: %q", configuration.HeartbeatUrl)
+	}
+}
+
+func TestValidationRejectsAHeartbeatUrlThatIsNotHttp(t *testing.T) {
+	for _, invalidUrl := range []string{"heartbeat.example/check-id", "ftp://heartbeat.example", "https://"} {
+		configuration := validConfiguration()
+		configuration.HeartbeatUrl = invalidUrl
+		if err := configuration.validate(); err == nil || !strings.Contains(err.Error(), "HeartbeatUrl") {
+			t.Errorf("%q should be rejected, got %v", invalidUrl, err)
+		}
+	}
+}
+
 func TestValidationRejectsAConfigurationWithNoProjects(t *testing.T) {
 	configuration := validConfiguration()
 	configuration.Projects = nil

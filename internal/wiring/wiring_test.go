@@ -14,6 +14,7 @@ func TestSettingsFromConfigurationUseTheAgreedLimits(t *testing.T) {
 		GitHubTokenFile:     "/var/ci/etc/github-token",
 		CommitStatusContext: "ci/citask",
 		RunLogRetentionDays: 30,
+		HeartbeatUrl:        "https://heartbeat.example/check-id",
 		Projects: []config.ProjectConfiguration{
 			{Name: "first-project", TrunkBranch: "master", RunTimeLimitMinutes: 30},
 			{Name: "second-project", TrunkBranch: "develop", RunTimeLimitMinutes: 10},
@@ -25,6 +26,12 @@ func TestSettingsFromConfigurationUseTheAgreedLimits(t *testing.T) {
 	}
 	if settings.GitHubRequestTimeLimit != 30*time.Second {
 		t.Errorf("GitHub request time limit: %s", settings.GitHubRequestTimeLimit)
+	}
+	if settings.HeartbeatUrl != "https://heartbeat.example/check-id" {
+		t.Errorf("heartbeat url: %s", settings.HeartbeatUrl)
+	}
+	if settings.HeartbeatRequestTimeLimit != 10*time.Second {
+		t.Errorf("heartbeat request time limit: %s", settings.HeartbeatRequestTimeLimit)
 	}
 	if settings.ProcessStopGracePeriod != 10*time.Second {
 		t.Errorf("process stop grace period: %s", settings.ProcessStopGracePeriod)

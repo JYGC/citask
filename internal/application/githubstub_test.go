@@ -62,6 +62,7 @@ type gitHubStub struct {
 	behaviour    gitHubStubBehaviour
 	requests     []recordedRequest
 	repositories map[string]*stubRepository
+	rejectedPath string
 }
 
 func newGitHubStub(t *testing.T) *gitHubStub {
@@ -94,6 +95,14 @@ func (stub *gitHubStub) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 		Body:   string(body),
 	})
 	stub.mutex.Unlock()
+
+	stub.mutex.Lock()
+	requestIsForARejectedRepository := stub.rejectedPath != "" && strings.HasPrefix(request.URL.Path, stub.rejectedPath)
+	stub.mutex.Unlock()
+	if requestIsForARejectedRepository {
+		http.Error(writer, "Bad credentials", http.StatusUnauthorized)
+		return
+	}
 
 	switch behaviour {
 	case neverRespond:
@@ -261,6 +270,12 @@ func (stub *gitHubStub) setBehaviour(behaviour gitHubStubBehaviour) {
 	stub.mutex.Lock()
 	defer stub.mutex.Unlock()
 	stub.behaviour = behaviour
+}
+
+func (stub *gitHubStub) rejectRequestsForRepository(owner, repository string) {
+	stub.mutex.Lock()
+	defer stub.mutex.Unlock()
+	stub.rejectedPath = "/repos/" + owner + "/" + repository + "/"
 }
 
 func (stub *gitHubStub) requestCount() int {

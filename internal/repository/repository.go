@@ -54,6 +54,10 @@ type LeftoverProcessStopper interface {
 	StopLeftoverProcesses() error
 }
 
+type HeartbeatSender interface {
+	SendHeartbeat(ctx context.Context) error
+}
+
 type CommitStatusPublisher interface {
 	PublishCommitStatus(ctx context.Context, project domain.Project, commitSha string, status domain.CommitStatus) error
 }

@@ -51,6 +51,7 @@ type Configuration struct {
 	GitHubTokenFile     string
 	CommitStatusContext string
 	RunLogRetentionDays int
+	HeartbeatUrl        string
 	Projects            []ProjectConfiguration
 }
 
@@ -102,6 +103,11 @@ func (configuration Configuration) validate() error {
 	}
 	if err := validateHttpUrl("GitHubApiBaseUrl", configuration.GitHubApiBaseUrl); err != nil {
 		validationErrors = append(validationErrors, err)
+	}
+	if configuration.HeartbeatUrl != "" {
+		if err := validateHttpUrl("HeartbeatUrl", configuration.HeartbeatUrl); err != nil {
+			validationErrors = append(validationErrors, err)
+		}
 	}
 	if configuration.CommitStatusContext == "" {
 		addError("CommitStatusContext must not be empty")
