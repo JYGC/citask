@@ -1,9 +1,20 @@
 {
   "Steps": [
     {
-      "Name": "go-tests",
+      "Name": "ci-test-hangs-with-chromium",
       "WorkingDirectory": ".",
-      "Command": ["go", "test", "-count=1", "./..."]
+      "Command": [
+        "sh",
+        "-c",
+        "chrome --headless --disable-gpu --remote-debugging-port=0 --user-data-dir=\"$TMPDIR/chromium-profile\" about:blank >/dev/null 2>&1 & perl -MPOSIX -e 'POSIX::setsid(); sleep 3600' & perl -MPOSIX -e 'POSIX::setsid(); $SIG{TERM} = \"IGNORE\"; sleep 3600' & echo \"hung on purpose in TMPDIR=$TMPDIR\"; sleep 3600"
+      ]
+    },
+    {
+      "Name": "ci-test-must-be-skipped",
+      "WorkingDirectory": ".",
+      "Command": [
+        "true"
+      ]
     }
   ]
 }
