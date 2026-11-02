@@ -70,6 +70,12 @@ func TestLoadFromFileAcceptsAValidConfiguration(t *testing.T) {
 	}
 }
 
+func TestTheExampleConfigurationInTheRepoIsValid(t *testing.T) {
+	if _, err := loadFromFile(filepath.Join("..", "..", "citask.example.json")); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestLoadFromFileReportsAMissingFile(t *testing.T) {
 	if _, err := loadFromFile(filepath.Join(t.TempDir(), "citask.json")); err == nil {
 		t.Fatal("expected an error for a missing file")

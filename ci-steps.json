@@ -1,0 +1,9 @@
+{
+  "Steps": [
+    {
+      "Name": "go-tests",
+      "WorkingDirectory": ".",
+      "Command": ["go", "test", "-count=1", "./..."]
+    }
+  ]
+}

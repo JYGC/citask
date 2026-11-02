@@ -1,0 +1,17 @@
+{
+  "CiHomeDirectory": "/var/ci",
+  "GitHubApiBaseUrl": "https://api.github.com",
+  "GitHubTokenFile": "/var/ci/etc/github-token",
+  "CommitStatusContext": "ci/citask",
+  "RunLogRetentionDays": 30,
+  "Projects": [
+    {
+      "Name": "example-project",
+      "CloneUrl": "https://github.com/example-owner/example-repository",
+      "GitHubOwner": "example-owner",
+      "GitHubRepository": "example-repository",
+      "TrunkBranch": "master",
+      "RunTimeLimitMinutes": 30
+    }
+  ]
+}

@@ -51,6 +51,12 @@ func TestReadStepDefinitionsReadsEveryField(t *testing.T) {
 	}
 }
 
+func TestTheStepDefinitionsCitaskUsesForItselfAreValid(t *testing.T) {
+	if _, err := (StepDefinitionFileReader{}).ReadStepDefinitions(filepath.Join("..", "..")); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestReadStepDefinitionsReportsAMissingFile(t *testing.T) {
 	_, err := StepDefinitionFileReader{}.ReadStepDefinitions(t.TempDir())
 	if !errors.Is(err, os.ErrNotExist) {
