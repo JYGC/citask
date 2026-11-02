@@ -58,7 +58,7 @@ func writeConfigurationFile(t *testing.T, content string) string {
 }
 
 func TestLoadFromFileAcceptsAValidConfiguration(t *testing.T) {
-	configuration, err := loadFromFile(writeConfigurationFile(t, validConfigurationJson))
+	configuration, err := LoadFromFile(writeConfigurationFile(t, validConfigurationJson))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,20 +71,20 @@ func TestLoadFromFileAcceptsAValidConfiguration(t *testing.T) {
 }
 
 func TestTheExampleConfigurationInTheRepoIsValid(t *testing.T) {
-	if _, err := loadFromFile(filepath.Join("..", "..", "citask.example.json")); err != nil {
+	if _, err := LoadFromFile(filepath.Join("..", "..", "citask.example.json")); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestLoadFromFileReportsAMissingFile(t *testing.T) {
-	if _, err := loadFromFile(filepath.Join(t.TempDir(), "citask.json")); err == nil {
+	if _, err := LoadFromFile(filepath.Join(t.TempDir(), "citask.json")); err == nil {
 		t.Fatal("expected an error for a missing file")
 	}
 }
 
 func TestLoadFromFileRejectsAnUnknownField(t *testing.T) {
 	misspeltField := strings.Replace(validConfigurationJson, `"TrunkBranch"`, `"TrunkBranchh"`, 1)
-	_, err := loadFromFile(writeConfigurationFile(t, misspeltField))
+	_, err := LoadFromFile(writeConfigurationFile(t, misspeltField))
 	if err == nil || !strings.Contains(err.Error(), "TrunkBranchh") {
 		t.Fatalf("expected the unknown field to be named, got %v", err)
 	}

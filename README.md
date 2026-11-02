@@ -102,29 +102,54 @@ cannot be written. Failing tests are not such a case: they are reported on GitHu
 `citask` must run as a dedicated user named exactly `_ci`, which runs nothing else. After every run it
 stops every other process owned by that user, and it refuses to do so under any other name.
 
-1. Build the program and install it, with a `citask.json` based on `citask.example.json`, in a root-owned
-   folder such as `/usr/local/libexec/citask/`. Do not put it under the CI home: `_ci` owns that folder,
-   and the owner of a folder can rename anything inside it, so a step could replace the program.
+`install-on-openbsd.sh` sets up the machine. Run it as root, as often as you like. It creates what is
+missing and replaces the program when it differs, and a run with nothing to do reports `0 changes`.
+
+1. Build the program, and write a `citask.json` based on `citask.example.json`:
 
    ```sh
    make build
    ```
 
-2. Create `_ci` with no login shell and outside `wheel`, with the CI home as its home folder. Give it a
-   login class with the resource limits your builds need.
-3. Add `_ci` to `/var/cron/cron.deny` and `/var/cron/at.deny`, so a step cannot schedule its own work.
-4. Create a fine-grained GitHub token limited to the enrolled repos, with commit status and issue write
-   access. Store it at `GitHubTokenFile`, owned by `_ci` with mode `0600`.
-5. Add the schedule to `/etc/crontab`. `-s` stops cron starting a second copy, and `-n` sends mail only when
-   the poll exits non-zero:
+2. Run the script:
+
+   ```sh
+   doas sh install-on-openbsd.sh --config /path/to/citask.json
+   ```
+
+   This creates the `ci` login class, the `_ci` user and its home at `/var/ci`, installs the program and
+   `citask.json` in `/usr/local/libexec/citask/`, and adds `_ci` to `/var/cron/cron.deny` and
+   `/var/cron/at.deny`, so a step cannot schedule its own work.
+
+   The program sits in a root-owned folder rather than the CI home because `_ci` owns that home, and the
+   owner of a folder can rename anything inside it, so a step could replace the program.
+
+3. Create a fine-grained GitHub token limited to the enrolled repos, with commit status and issue write
+   access. Store it at `/var/ci/etc/github-token`, owned by `_ci` with mode `0600`.
+4. Start the schedule, which adds this to `/etc/crontab`. The script never starts it unless asked, and it
+   refuses to without a token:
+
+   ```sh
+   doas sh install-on-openbsd.sh --start-schedule --mail-to example-user
+   ```
 
    ```
    MAILTO=example-user
    */5 * * * * _ci -n -s /usr/local/libexec/citask/citask poll
    ```
 
-`citask` reads `citask.json` from the folder holding the program. Unknown fields are rejected, and an
-invalid file names every failing field. To test a commit again, delete
+   `-s` stops cron starting a second copy, and `-n` sends mail only when the poll exits non-zero.
+
+To upgrade, run `make build` and the script again. The running poll keeps the old program, because the
+new one replaces it by rename.
+
+The script never overwrites the login class, `citask.json` or the schedule, because you may have edited
+them, and running it again must not undo that. `--config` only applies when no `citask.json` is installed.
+To change the config, edit the installed file, then check it with `citask check-config <file>`, which
+names every failing field. Unknown fields are rejected. If `_ci` already exists with a different login
+class, home or shell, or is in `wheel`, the script stops rather than change the account.
+
+`citask` reads `citask.json` from the folder holding the program. To test a commit again, delete
 `state/<Name>/last-tested-commit` in the CI home as `_ci`.
 
 ### What steps can reach

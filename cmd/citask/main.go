@@ -19,9 +19,18 @@ func main() {
 }
 
 func runCommand(arguments []string) error {
-	if len(arguments) != 1 || arguments[0] != "poll" {
-		return errors.New("usage: citask poll")
+	switch {
+	case len(arguments) == 1 && arguments[0] == "poll":
+		return pollAllProjects()
+	case len(arguments) == 2 && arguments[0] == "check-config":
+		_, err := config.LoadFromFile(arguments[1])
+		return err
+	default:
+		return errors.New("usage: citask poll | citask check-config <file>")
 	}
+}
+
+func pollAllProjects() error {
 	configuration, err := config.Load()
 	if err != nil {
 		return err

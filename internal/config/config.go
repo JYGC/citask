@@ -64,10 +64,10 @@ func Load() (Configuration, error) {
 	if err != nil {
 		return Configuration{}, fmt.Errorf("resolve executable path: %w", err)
 	}
-	return loadFromFile(filepath.Join(filepath.Dir(executablePath), "citask.json"))
+	return LoadFromFile(filepath.Join(filepath.Dir(executablePath), "citask.json"))
 }
 
-func loadFromFile(configurationFilePath string) (Configuration, error) {
+func LoadFromFile(configurationFilePath string) (Configuration, error) {
 	configurationFile, err := os.Open(configurationFilePath)
 	if err != nil {
 		return Configuration{}, err
