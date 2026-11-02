@@ -70,7 +70,7 @@ func Load() (Configuration, error) {
 func loadFromFile(configurationFilePath string) (Configuration, error) {
 	configurationFile, err := os.Open(configurationFilePath)
 	if err != nil {
-		return Configuration{}, fmt.Errorf("open %s: %w", configurationFilePath, err)
+		return Configuration{}, err
 	}
 	defer configurationFile.Close()
 

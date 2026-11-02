@@ -83,11 +83,9 @@ func (runLogs RunLogStore) DeleteRunLogsOlderThan(project domain.Project, cutoff
 func appendToFile(path, text string) error {
 	file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
-		return fmt.Errorf("open %s: %w", path, err)
+		return err
 	}
 	defer file.Close()
-	if _, err := file.WriteString(text); err != nil {
-		return fmt.Errorf("write %s: %w", path, err)
-	}
-	return nil
+	_, err = file.WriteString(text)
+	return err
 }

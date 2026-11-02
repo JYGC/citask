@@ -21,7 +21,7 @@ func (lock ExclusivePollFileLock) TryAcquireExclusivePollLock() (releaseLock fun
 	}
 	lockFile, err := os.OpenFile(lock.LockFile, os.O_CREATE|os.O_RDWR, 0o644)
 	if err != nil {
-		return nil, false, fmt.Errorf("open %s: %w", lock.LockFile, err)
+		return nil, false, err
 	}
 
 	err = syscall.Flock(int(lockFile.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
