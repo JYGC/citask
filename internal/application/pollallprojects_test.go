@@ -813,8 +813,8 @@ func TestTwoProjectsKeepSeparateClonesStateLogsAndFailureIssues(t *testing.T) {
 	harness := newPollHarness(t)
 	firstProject := harness.enrolProject("project-one", "master")
 	secondProject := harness.enrolProject("project-two", "master")
-	firstCommit := firstProject.commitFailingStepOnTrunk()
-	secondCommit := secondProject.commitFailingStepOnTrunk()
+	firstCommit := firstProject.commitStepsOnTrunk(shellStep("failing-step-of-the-first-project", "exit 1"))
+	secondCommit := secondProject.commitStepsOnTrunk(shellStep("failing-step-of-the-second-project", "exit 1"))
 
 	harness.poll()
 
