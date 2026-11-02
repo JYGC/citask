@@ -3,21 +3,7 @@
     {
       "Name": "go-tests",
       "WorkingDirectory": ".",
-      "Command": [
-        "go",
-        "test",
-        "-count=1",
-        "./..."
-      ]
-    },
-    {
-      "Name": "ci-test-fails-on-purpose",
-      "WorkingDirectory": ".",
-      "Command": [
-        "sh",
-        "-c",
-        "echo second-failing-commit; echo \"cron-limits data=$(ulimit -d) core=$(ulimit -c)\"; echo \"account user=$(id -un) home=$HOME login-shell=$(awk -F: -v user=$(id -un) '$1 == user { print $7 }' /etc/passwd)\"; echo \"private-values-for-the-leak-check $(hostname) $(pwd)\"; exit 1"
-      ]
+      "Command": ["go", "test", "-count=1", "./..."]
     }
   ]
 }
